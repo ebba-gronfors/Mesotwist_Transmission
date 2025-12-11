@@ -1,68 +1,48 @@
+%% To plot transmission curves, run THIS CELL ONLY
+
 clf
 incoming_pol_light=[1;0];
 no=1.5; %Can be any number, does not affect the output
-ne=no+0.220571429; % Measured by Anna
-%ne=no+0.22; %To be adjusted
+ne=no+0.220571429; % no+birefringence
 
-%OPTIMERA FÖR 2.1 um
+lambdas=[500,600]*1e-9; %Wavelengths of light
 
-%lambdas=[450,589]*1e-9; %Anna's wavelengths
-lambdas=[500,600]*1e-9;
-%thicknesses=[3.5,3.5,3.5,3.5]*1e-6; %Measured by Anna
-thicknesses=[3.5,3.5,3.5,3.5,3.5,3.5]*1e-6; %To be adjusted
-%thicknesses=[0.8,1.2,1.6,2,2.4,2.8,3.2,3.6,4]*1e-6;
+%Cell gaps (can be varied or the same for all cases)
+thicknesses=[3.5,3.5,3.5,3.5,3.5,3.5]*1e-6; 
+
+%Colors for the graphs
 colors=['b','c','g','y','r','m'];
 
-%twists=-mid_twist*[linspace(0,1,500),linspace(1,0,500);
-%    linspace(0,-0.2,100),linspace(-0.2,0.8,500),linspace(0.8,0,400);
-%    linspace(0,-0.4,200),linspace(-0.4,0.6,500),linspace(0.6,0,300);
-%    linspace(0,-0.6,300),linspace(-0.6,0.4,500),linspace(0.4,0,200);
-%    linspace(0,-0.8,400),linspace(-0.8,0.2,500),linspace(0.2,0,100);
-%    linspace(0,-1,500),linspace(-1,0,500)];
-        
-outputs=zeros(20,100);
+%Define the shapes of the structures to be compared
+%Thickness dependent amplitudes can be left out and included at a later
+%step
+shapes=[linspace(0,1,500),linspace(1,0,500);
+        linspace(0,-0.2,100),linspace(-0.2,0.8,500),linspace(0.8,0,400);
+        linspace(0,-0.4,200),linspace(-0.4,0.6,500),linspace(0.6,0,300);
+        linspace(0,-0.6,300),linspace(-0.6,0.4,500),linspace(0.4,0,200);
+        linspace(0,-0.8,400),linspace(-0.8,0.2,500),linspace(0.2,0,100);
+        linspace(0,-1,500),linspace(-1,0,500)];
 
-for m=1:6
-
-    for i=1:2
+for m=1:6 %Go through all cases
+    for i=1:2 %Go through the wavelengths
         subplot(2,1,i)
         hold on
     
         thickness=thicknesses(m);
-        dz=thickness/1000;
-        opt_twist=0.2e6;
-        %mid_twist=thickness/4.7e-6*0.5; %What we used for the paper
-        mid_twist=thickness/4.7e-6*0.75;
+        dz=thickness/1000; %Cell gap divided into 1000 equally thick uniform slabs
+        mid_twist=thickness/4.7e-6*0.5; %twist angle across half the cell gap (radians). Here you can include thickness dependencies.
         lambda=lambdas(i);
-
-        twists=-mid_twist*[linspace(0,1,500),linspace(1,0,500);
-            linspace(0,-0.2,100),linspace(-0.2,0.8,500),linspace(0.8,0,400);
-            linspace(0,-0.4,200),linspace(-0.4,0.6,500),linspace(0.6,0,300);
-            linspace(0,-0.6,300),linspace(-0.6,0.4,500),linspace(0.4,0,200);
-            linspace(0,-0.8,400),linspace(-0.8,0.2,500),linspace(0.2,0,100);
-            linspace(0,-1,500),linspace(-1,0,500)];
-        twist=twists(m,:);
         
-        pol_angles=linspace(0,pi);
+        twist=-mid_twist*shapes(m,:);%Combine shape and twist angle
+       
+        gammas=linspace(0,pi);%angle between polarizers
         
         output=zeros(1,100);
-        
-        %twist=linspace(0,2*pi,1000); %linear
-        %twist=-mid_twist*[linspace(0,1,500),linspace(1,0,500)]; %axis angle
-        %twist=-mid_twist*[linspace(0,0.5,250),linspace(0.5,-0.5,500),linspace(-0.5,0,250)]; %axis angle
-        %twist=mid_twist*sin(linspace(0*pi,1*pi,1000));
 
-        % First order mesotwist with offset
-      %  offset=0.01; %a
-      %  maxtwist=opt_twist*thickness/2-offset/2; %b
-      %  twist=[linspace(0,-maxtwist,1000*(1/2-offset/(2*opt_twist*thickness))),linspace(-maxtwist,offset,1000*(1/2+offset/(2*opt_twist*thickness))+1)];
-
-        % Second order mesotwist
-
-        for k=1:100
-            pol_angle=pol_angles(k);
-            incoming_pol_light=[1;0];
-            for j=1:1000
+        for k=1:100 %Go through gamma
+            gamma=gammas(k);
+            incoming_pol_light=[1;0]; %Incoming light
+            for j=1:1000 %Let light pass through all slabs
                 phi=twist(j);
                 d1=2*pi*dz/lambda*no;
                 d2=2*pi*dz/lambda*ne;
@@ -71,66 +51,45 @@ for m=1:6
                 (exp(1i*d1)-exp(1i*d2))*sin(phi)*cos(phi), exp(1i*d1)*sin(phi)^2+exp(1i*d2)*cos(phi)^2];
             
                 incoming_pol_light=LC_layer*incoming_pol_light;
-                %disp(LC_layer)
             end
         
-            polarizer=[cos(pol_angle)^2, cos(pol_angle)*sin(pol_angle);
-                cos(pol_angle)*sin(pol_angle), sin(pol_angle)^2];
+            polarizer=[cos(gamma)^2, cos(gamma)*sin(gamma);
+                cos(gamma)*sin(gamma), sin(gamma)^2]; 
             
-            pol_light = polarizer * incoming_pol_light;
-            output(k)=abs(pol_light(1))^2 + abs(pol_light(2))^2;
+            pol_light = polarizer * incoming_pol_light; %Let light pass analyzer
+            output(k)=abs(pol_light(1))^2 + abs(pol_light(2))^2; %Amplitude of transmitted light
         end
         
-        
-        outputs(3*(m-1)+i,:) = output;
-        
-        plot(pol_angles*180/pi,output,'Color',colors(m))
-        %disp(thickness/lambda)
-        %pause(0.1)
+        plot(gammas*180/pi,output,'Color',colors(m))
     end
 end
 
-%disp('Maxtwist:')
-%disp(maxtwist)
+%Some plot settings
 
 subplot(2,1,1)
 xticks([0,45, 90,135, 180])
-%xticklabels({'0', '90', '180'})
-
 xlabel('\gamma [°]')
 ylabel('T [%]')
-%legend('0.8 \mum','2.1 \mum','3.4 \mum','4.0 \mum','location','SW')
-%str=num2str(lambda);
 axis([0,180,0,1])
 
 subplot(2,1,2)
 xticks([0,45, 90,135, 180])
-
-
 xlabel('\gamma [°]')
 ylabel('T [%]')
-%legend('0.8 \mum','2.1 \mum','3.4 \mum','4.0 \mum','location','SW')
-%str=num2str(lambda);
 
 set(findall(gcf,'-property','FontSize'),'FontSize',20) % Increase font size for all text
 set(findall(gcf,'-property','LineWidth'),'LineWidth',2) % Increase line width for all plots
 axis([0,180,0,1])
 
 
-%% To plot the relevant twists
+%% To plot the director structures (run entire code, or this cell after the first)
 clf
 
 for m=1:6
-    twist=twists(m,:);
+    shape=-mid_twist*shapes(m,:);
     hold on
-    plot(twist*180/pi,linspace(0,thickness,1000),'Color',colors(m))
+    plot(shape*180/pi,linspace(0,thickness,1000),'Color',colors(m))
 end
-
-%for m=3:4
-%    twist=twists(m,:);
-%    hold on
-%    plot(twist*180/pi,linspace(0,thickness,1000),'--','Color',colors(m))
-%end
 
 set(findall(gcf,'-property','FontSize'),'FontSize',20) % Increase font size for all text
 set(findall(gcf,'-property','LineWidth'),'LineWidth',2) % Increase line width for all plots
